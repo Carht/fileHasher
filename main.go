@@ -28,12 +28,19 @@ func (h *FileHasher) md5(path string) ([]byte, error) {
 	}
 	defer file.Close()
 
-	md5s := md5.New()
-	if _, err := io.Copy(md5s, file); err != nil {
+	md5 := md5.New()
+	if _, err := io.Copy(md5, file); err != nil {
 		log.Fatal(err)
 	}
 
-	return md5s.Sum(nil), nil
+	return md5.Sum(nil), nil
+}
+
+func (h *FileHasher) md5dir(path string) ([]byte, error) {
+	md5 := md5.New()
+	io.WriteString(md5, path)
+
+	return md5.Sum(nil), nil
 }
    
 func main() {
@@ -54,6 +61,15 @@ func main() {
 		if !info.IsDir() {
 			fhs.filename = path
 			fhs.hash, err = fhs.md5(fhs.filename)
+			if err != nil {
+				log.Fatal(err)
+			} 
+
+			fmt.Printf("%s, %x\n", fhs.filename, fhs.hash)
+			
+		} else {
+			fhs.filename = path
+			fhs.hash, err = fhs.md5dir(fhs.filename)
 			if err != nil {
 				log.Fatal(err)
 			}
