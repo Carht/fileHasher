@@ -38,6 +38,7 @@ func filemd5(path string) ([]byte , error) {
 
 func main() {
 	fhs := new(FileHasher)
+	flag.Parse()
 
 	_, err := os.Stat(flag_path)
 	if err != nil {
