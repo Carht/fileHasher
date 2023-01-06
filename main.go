@@ -98,9 +98,9 @@ func main() {
 			return nil
 		})
 	} else {
-		list_files, err := singledir.ReadDirNames(flag_path)
+		list_files, err := singledir.ReadDirNames(path)
 		
-		lf_fullpath, err := singledir.ToAbs(flag_path, list_files)
+		lf_fullpath, err := singledir.ToAbs(path, list_files)
 
 		if flag_hash == "md5" {
 			err = list_md5(lf_fullpath)
