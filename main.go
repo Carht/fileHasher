@@ -1,77 +1,45 @@
 package main
 
 import (
-	"io"
 	"os"
 	"fmt"
 	"flag"
 	"log"
-	"crypto/md5"
-	"crypto/sha512"
 	"path/filepath"
+	"github.com/carht/fileHasher/singledir"
+	"github.com/carht/fileHasher/walkerdir"
 )
-
-type FileHasher struct {
-	filename string
-	hash []byte
-}
 
 var (
 	flag_path string
 	flag_hash string
+	flag_singledir string
 )
 
 func init() {
 	flag.StringVar(&flag_path, "p", ".", "File path")
 	flag.StringVar(&flag_hash, "h", "md5", "Hash algoritm")
 }
-
-func (h *FileHasher) md5(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	md5 := md5.New()
-	if _, err := io.Copy(md5, file); err != nil {
-		log.Fatal(err)
-	}
-
-	return md5.Sum(nil), nil
-}
-
-func (h *FileHasher) md5dir(path string) ([]byte, error) {
-	md5 := md5.New()
-	io.WriteString(md5, path)
-
-	return md5.Sum(nil), nil
-}
-
-func (h *FileHasher) sha512(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	sha512 := sha512.New()
-	if _, err := io.Copy(sha512, file); err != nil {
-		log.Fatal(err)
-	}
-
-	return sha512.Sum(nil), nil
-}
-
-func (h *FileHasher) sha512dir(path string) ([]byte, error) {
-	sha512 := sha512.New()
-	io.WriteString(sha512, path)
-
-	return sha512.Sum(nil), nil
-}
    
+func list_md5(paths []string) error {
+	for _, file := range paths {
+		fmt.Printf("%s, %x\n", file, singledir.Hmd5(file))
+	}
+
+	return nil	
+}
+
+func list_sha512(paths []string) error {
+	for _, file := range paths {
+		fmt.Printf("%s, %x\n", file, singledir.Hsha512(file))
+	}
+
+	return nil
+}
+
 func main() {
-	f := new(FileHasher)
+	flag_walkerp := flag.Bool("w", false, "Directory Walker")
+	f := walkerdir.FileHasher{}
 	flag.Parse()
 
 	_, err := os.Stat(flag_path)
@@ -84,48 +52,68 @@ func main() {
 		log.Fatal(err)
 	}
 
-	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if flag_hash == "md5" {
-			if !info.IsDir() {
-				f.filename = path
-				f.hash, err = f.md5(f.filename)
-				if err != nil {
-					log.Fatal(err)
-				} 
-
-				fmt.Printf("%s, %x\n", f.filename, f.hash)
-				
-			} else {
-				f.filename = path
-				f.hash, err = f.md5dir(f.filename)
-				if err != nil {
-					log.Fatal(err)
+	if *flag_walkerp {
+		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+			if flag_hash == "md5" {
+				if !info.IsDir() {
+					f.Filename = path
+					f.Hash, err = f.Md5(f.Filename)
+					if err != nil {
+						log.Fatal(err)
+					} 
+					
+					fmt.Printf("%s, %x\n", f.Filename, f.Hash)
+					
+				} else {
+					f.Filename = path
+					f.Hash, err = f.Md5dir(f.Filename)
+					if err != nil {
+						log.Fatal(err)
+					}
+					
+					fmt.Printf("%s, %x\n", f.Filename, f.Hash)
 				}
-				
-				fmt.Printf("%s, %x\n", f.filename, f.hash)
+			}
+			
+			if flag_hash == "sha512" {
+				if !info.IsDir() {
+					f.Filename = path
+					f.Hash, err = f.Sha512(f.Filename)
+					if err != nil {
+						log.Fatal(err)
+					}
+					
+					fmt.Printf("%s, %x\n", f.Filename, f.Hash)
+				} else {
+					f.Filename = path
+					f.Hash, err = f.Sha512dir(f.Filename)
+					if err != nil {
+						log.Fatal(err)
+					}
+					
+					fmt.Printf("%s, %x\n", f.Filename, f.Hash)
+				}
+			}
+			
+			return nil
+		})
+	} else {
+		list_files, err := singledir.ReadDirNames(flag_path)
+		
+		lf_fullpath, err := singledir.ToAbs(flag_path, list_files)
+
+		if flag_hash == "md5" {
+			err = list_md5(lf_fullpath)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
 
 		if flag_hash == "sha512" {
-			if !info.IsDir() {
-				f.filename = path
-				f.hash, err = f.sha512(f.filename)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				fmt.Printf("%s, %x\n", f.filename, f.hash)
-			} else {
-				f.filename = path
-				f.hash, err = f.sha512dir(f.filename)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				fmt.Printf("%s, %x\n", f.filename, f.hash)
+			err = list_sha512(lf_fullpath)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
-		
-		return nil
-	})
+	}
 }
